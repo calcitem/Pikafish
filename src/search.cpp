@@ -36,19 +36,6 @@
 
 #include "tune.h"
 
-using namespace Stockfish;
-
-int IMP = 175;
-int SB0 = 8, SB1 = 265, SB2 = 276, SB3 = 1452;
-int SE0 = 26, SE1 = 71, SE2 = 5491;
-int LMR0 = 4334, LMR1 = 15914, LMR2 = 78, LMR3 = 11, LMR4 = 6;
-TUNE(
-    IMP,
-    SB0, SB1, SB2, SB3,
-	SE0, SE1, SE2,
-	LMR0, LMR1, LMR2, LMR3, LMR4
-);
-
 namespace Stockfish {
 
 namespace Search {
@@ -84,7 +71,7 @@ namespace {
 
   // History and stats update bonus, based on depth
   int stat_bonus(Depth d) {
-    return std::min((SB0 * d + SB1) * d - SB2, SB3);
+    return std::min((8 * d + 317) * d - 298, 1281);
   }
 
   // Add a small random component to draw evaluations to avoid 3-fold blindness
@@ -656,14 +643,13 @@ namespace {
     // margin and the improving flag are used in various pruning heuristics.
     improvement =   (ss-2)->staticEval != VALUE_NONE ? ss->staticEval - (ss-2)->staticEval
                   : (ss-4)->staticEval != VALUE_NONE ? ss->staticEval - (ss-4)->staticEval
-                  : IMP;
+                  :                                    156;
     improving = improvement > 0;
 
     // Step 6. Razoring.
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
-    if (   depth <= 7
-        && eval < alpha - 349 - 244 * depth * depth)
+    if (eval < alpha - 349 - 244 * depth * depth)
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
         if (value < alpha)
@@ -883,8 +869,7 @@ moves_loop: // When in check, search starts here
               || givesCheck)
           {
               // Futility pruning for captures (~0 Elo)
-              if (   !pos.empty(to_sq(move))
-                  && !givesCheck
+              if (   !givesCheck
                   && !PvNode
                   && lmrDepth < 6
                   && !ss->inCheck
@@ -956,7 +941,7 @@ moves_loop: // When in check, search starts here
 
                   // Avoid search explosion by limiting the number of double extensions
                   if (  !PvNode
-                      && value < singularBeta - SE0
+                      && value < singularBeta - 29
                       && ss->doubleExtensions <= 8)
                       extension = 2;
               }
@@ -981,14 +966,14 @@ moves_loop: // When in check, search starts here
           // Check extensions (~1 Elo)
           else if (   givesCheck
                    && depth > 9
-                   && abs(ss->staticEval) > SE1)
+                   && abs(ss->staticEval) > 72)
               extension = 1;
 
           // Quiet ttMove extensions (~0 Elo)
           else if (   PvNode
                    && move == ttMove
                    && move == ss->killers[0]
-                   && (*contHist[0])[movedPiece][to_sq(move)] >= SE2)
+                   && (*contHist[0])[movedPiece][to_sq(move)] >= 5656)
               extension = 1;
       }
 
@@ -1052,10 +1037,10 @@ moves_loop: // When in check, search starts here
                          + (*contHist[0])[movedPiece][to_sq(move)]
                          + (*contHist[1])[movedPiece][to_sq(move)]
                          + (*contHist[3])[movedPiece][to_sq(move)]
-                         - LMR0;
+                         - 4147;
 
           // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
-          r -= ss->statScore / LMR1;
+          r -= ss->statScore / 12934;
 
           // In general we want to cap the LMR depth search at newDepth, but when
           // reduction is negative, we allow this move a limited search extension
@@ -1067,14 +1052,14 @@ moves_loop: // When in check, search starts here
           // Do full depth search when reduced LMR search fails high
           if (value > alpha && d < newDepth)
           {
-              const bool doDeeperSearch = value > (alpha + LMR2 + LMR3 * (newDepth - d));
+              const bool doDeeperSearch = value > (alpha + 61 + 10 * (newDepth - d));
               value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth + doDeeperSearch, !cutNode);
 
               int bonus = value > alpha ?  stat_bonus(newDepth)
                                         : -stat_bonus(newDepth);
 
               if (capture)
-                  bonus /= LMR4;
+                  bonus /= 4;
 
               update_continuation_histories(ss, movedPiece, to_sq(move), bonus);
           }
@@ -1426,8 +1411,8 @@ moves_loop: // When in check, search starts here
       // Continuation history based pruning (~2 Elo)
       if (   !capture
           && bestValue > VALUE_MATED_IN_MAX_PLY
-          && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold
-          && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < CounterMovePruneThreshold)
+          && (*contHist[0])[pos.moved_piece(move)][to_sq(move)] < 0
+          && (*contHist[1])[pos.moved_piece(move)][to_sq(move)] < 0)
           continue;
 
       // movecount pruning for quiet check evasions
