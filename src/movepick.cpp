@@ -21,13 +21,6 @@
 #include "bitboard.h"
 #include "movepick.h"
 
-#include "tune.h"
-
-using namespace Stockfish;
-
-int CAPTURE_SSE_THRESHOLD = 69;
-TUNE(CAPTURE_SSE_THRESHOLD);
-
 namespace Stockfish {
 
 namespace {
@@ -209,7 +202,7 @@ top:
 
   case GOOD_CAPTURE:
       if (select<Next>([&](){
-                       return pos.see_ge(*cur, Value(-CAPTURE_SSE_THRESHOLD * cur->value / 1024)) ?
+                       return pos.see_ge(*cur, Value(-69 * cur->value / 1024)) ?
                               // Move losing capture to endBadCaptures to be tried later
                               true : (*endBadCaptures++ = *cur, false); }))
           return *(cur - 1);

@@ -36,24 +36,6 @@
 
 #include "tune.h"
 
-using namespace Stockfish;
-
-int QS_FUTILITY_BIAS = 118;
-int EXT_STAT_BONUS_PER_DEPTH = 70;
-int SS_STAT_OFFSET = 4147;
-int SS_STAT_DIVISOR = 12934;
-int CONT_PRUN_PER_DEPTH = 3875;
-int FP_HIST_DIVISOR = 73;
-int SB_COEF_D3 = 0*64;
-int SB_COEF_D2 = 8*64;
-int SB_COEF_D1 = 317*64;
-int SB_COEF_D0 = 298*64;
-int SB_MAX = 1281*64;
-TUNE(
-QS_FUTILITY_BIAS, EXT_STAT_BONUS_PER_DEPTH, SS_STAT_OFFSET, SS_STAT_DIVISOR, CONT_PRUN_PER_DEPTH, FP_HIST_DIVISOR,
-SB_MAX, SB_COEF_D0, SB_COEF_D1, SB_COEF_D2, SetRange(-32, 32), SB_COEF_D3
-);
-
 namespace Stockfish {
 
 namespace Search {
@@ -89,10 +71,7 @@ namespace {
 
   // History and stats update bonus, based on depth
   int stat_bonus(Depth d) {
-    // return std::min((8 * d + 317) * d - 298, 1281);
-    int d2 = d * d;
-    int d3 = d2 * d;
-    return std::min(SB_COEF_D3 * d3 + SB_COEF_D2 * d2 + SB_COEF_D1 * d - SB_COEF_D0, SB_MAX) / 64;
+    return std::min((8 * d + 317) * d - 298, 1281);
   }
 
   // Add a small random component to draw evaluations to avoid 3-fold blindness
@@ -946,7 +925,7 @@ moves_loop: // When in check, search starts here
 
               // Continuation history based pruning (~2 Elo)
               if (   lmrDepth < 5
-                  && history < -CONT_PRUN_PER_DEPTH * (depth - 1))
+                  && history < -3875 * (depth - 1))
                   continue;
 
               history += 2 * thisThread->mainHistory[us][from_to(move)];
@@ -954,7 +933,7 @@ moves_loop: // When in check, search starts here
               // Futility pruning: parent node (~9 Elo)
               if (   !ss->inCheck
                   && lmrDepth < 11
-                  && ss->staticEval + 106 + 104 * lmrDepth + history / FP_HIST_DIVISOR <= alpha)
+                  && ss->staticEval + 106 + 104 * lmrDepth + history / 73 <= alpha)
                   continue;
 
               // Prune moves with negative SEE (~3 Elo)
@@ -1094,10 +1073,10 @@ moves_loop: // When in check, search starts here
                          + (*contHist[0])[movedPiece][to_sq(move)]
                          + (*contHist[1])[movedPiece][to_sq(move)]
                          + (*contHist[3])[movedPiece][to_sq(move)]
-                         - SS_STAT_OFFSET;
+                         - 4147;
 
           // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
-          r -= ss->statScore / SS_STAT_DIVISOR;
+          r -= ss->statScore / 12934;
 
           // In general we want to cap the LMR depth search at newDepth, but when
           // reduction is negative, we allow this move a limited search extension
@@ -1263,7 +1242,7 @@ moves_loop: // When in check, search starts here
         //or fail low was really bad
         bool extraBonus =    PvNode
                           || cutNode
-                          || bestValue < alpha - EXT_STAT_BONUS_PER_DEPTH * depth;
+                          || bestValue < alpha - 70 * depth;
 
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * (1 + extraBonus));
     }
@@ -1393,7 +1372,7 @@ moves_loop: // When in check, search starts here
         if (PvNode && bestValue > alpha)
             alpha = bestValue;
 
-        futilityBase = bestValue + QS_FUTILITY_BIAS;
+        futilityBase = bestValue + 118;
     }
 
     const PieceToHistory* contHist[] = { (ss-1)->continuationHistory, (ss-2)->continuationHistory,
