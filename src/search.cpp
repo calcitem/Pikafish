@@ -36,6 +36,22 @@
 
 #include "tune.h"
 
+using namespace Stockfish;
+
+int FUTILITY1 = 100;
+int OPT1 = 94;
+int OPT2 = 177;
+int RAZOR1 = 349;
+int RAZOR2 = 244;
+int NULLMOVE1 = 11902;
+int NULLMOVE2 = 161;
+int PROBCUT1 = 179;
+int STATSCORE1 = 4147;
+int DEEPER1 = 61;
+int DEEPER2 = 10;
+int STATSCORE2 = 70;
+TUNE(FUTILITY1, OPT1, OPT2, RAZOR1, RAZOR2, NULLMOVE1, NULLMOVE2, PROBCUT1, STATSCORE1, DEEPER1, DEEPER2, STATSCORE2);
+
 namespace Stockfish {
 
 namespace Search {
@@ -53,7 +69,7 @@ namespace {
 
   // Futility margin
   Value futility_margin(Depth d, bool improving) {
-    return Value(100 * (d - improving));
+    return Value(FUTILITY1 * (d - improving));
   }
 
   // Reductions lookup table, initialized at startup
@@ -337,7 +353,7 @@ void Thread::search() {
               beta  = std::min(prev + delta, VALUE_INFINITE);
 
               // Adjust optimism based on root move's previousScore
-              int opt = 94 * prev / (std::abs(prev) + 177);
+              int opt = OPT1 * prev / (std::abs(prev) + OPT2);
               optimism[ us] = Value(opt);
               optimism[~us] = -optimism[us];
           }
@@ -685,7 +701,7 @@ namespace {
     // Step 6. Razoring.
     // If eval is really low check with qsearch if it can exceed alpha, if it can't,
     // return a fail low.
-    if (eval < alpha - 349 - 244 * depth * depth)
+    if (eval < alpha - RAZOR1 - RAZOR2 * depth * depth)
     {
         value = qsearch<NonPV>(pos, ss, alpha - 1, alpha);
         if (value < alpha)
@@ -704,7 +720,7 @@ namespace {
     // Step 8. Null move search with verification search (~22 Elo)
     if (   !PvNode
         && (ss-1)->currentMove != MOVE_NULL
-        && (ss-1)->statScore < 11902
+        && (ss-1)->statScore < NULLMOVE1
         &&  eval >= beta
         &&  eval >= ss->staticEval
         &&  ss->staticEval >= beta - 15 * depth - improvement / 15 + 109 + complexity / 23
@@ -714,7 +730,7 @@ namespace {
         assert(eval - beta >= 0);
 
         // Null move dynamic reduction based on depth, eval and complexity of position
-        Depth R = std::min(int(eval - beta) / 161, 5) + depth / 3 + 4 - (complexity > 648);
+        Depth R = std::min(int(eval - beta) / NULLMOVE2, 5) + depth / 3 + 4 - (complexity > 648);
 
         ss->currentMove = MOVE_NULL;
         ss->continuationHistory = &thisThread->continuationHistory[0][0][NO_PIECE][0];
@@ -750,7 +766,7 @@ namespace {
         }
     }
 
-    probCutBeta = beta + 179 - 46 * improving;
+    probCutBeta = beta + PROBCUT1 - 46 * improving;
 
     // Step 9. ProbCut (~4 Elo)
     // If we have a good enough capture and a reduced search returns a value
@@ -1073,7 +1089,7 @@ moves_loop: // When in check, search starts here
                          + (*contHist[0])[movedPiece][to_sq(move)]
                          + (*contHist[1])[movedPiece][to_sq(move)]
                          + (*contHist[3])[movedPiece][to_sq(move)]
-                         - 4147;
+                         - STATSCORE1;
 
           // Decrease/increase reduction for moves with a good/bad history (~30 Elo)
           r -= ss->statScore / 12934;
@@ -1088,7 +1104,7 @@ moves_loop: // When in check, search starts here
           // Do full depth search when reduced LMR search fails high
           if (value > alpha && d < newDepth)
           {
-              const bool doDeeperSearch = value > (alpha + 61 + 10 * (newDepth - d));
+              const bool doDeeperSearch = value > (alpha + DEEPER1 + DEEPER2 * (newDepth - d));
               value = -search<NonPV>(pos, ss+1, -(alpha+1), -alpha, newDepth + doDeeperSearch, !cutNode);
 
               int bonus = value > alpha ?  stat_bonus(newDepth)
@@ -1235,14 +1251,14 @@ moves_loop: // When in check, search starts here
                          quietsSearched, quietCount, capturesSearched, captureCount, depth);
 
     // Bonus for prior countermove that caused the fail low
-    else if (   (depth >= 4 || PvNode)
+    else if (   (depth >= 5 || PvNode)
              && !priorCapture)
     {
         //Assign extra bonus if current node is PvNode or cutNode
         //or fail low was really bad
         bool extraBonus =    PvNode
                           || cutNode
-                          || bestValue < alpha - 70 * depth;
+                          || bestValue < alpha - STATSCORE2 * depth;
 
         update_continuation_histories(ss-1, pos.piece_on(prevSq), prevSq, stat_bonus(depth) * (1 + extraBonus));
     }
