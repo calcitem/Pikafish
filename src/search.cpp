@@ -36,6 +36,13 @@
 
 #include "tune.h"
 
+using namespace Stockfish;
+
+int PMD_DEPTH = 6;
+int PMD_VALUE = 400;
+int PMD_REDUC = 2;
+TUNE(PMD_DEPTH, PMD_VALUE, PMD_REDUC);
+
 namespace Stockfish {
 
 namespace Search {
@@ -807,6 +814,10 @@ namespace {
     if (    PvNode
         && !ttMove)
         depth -= 3;
+
+    // prune by material difference (~? Elo)
+    if (!PvNode && depth < PMD_DEPTH && alpha - pos.material_diff() > PMD_VALUE) 
+        depth -= PMD_REDUC;
 
     if (depth <= 0)
         return qsearch<PV>(pos, ss, alpha, beta);
